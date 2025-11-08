@@ -7,7 +7,7 @@ import { eventService } from '@/lib/eventService';
 import { taskService } from '@/lib/taskService';
 import { columnService } from '@/lib/columnService';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, addDays, subDays, startOfWeek, endOfWeek } from 'date-fns';
-import { ChevronLeft, ChevronRight, Plus, X, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X, Clock, Trash2, Calendar, Repeat } from 'lucide-react';
 import CreateEventModal from './CreateEventModal';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -146,9 +146,10 @@ interface DroppableDayProps {
   onDrop: (taskId: string, date: Date) => void;
   onAddEvent: (date: Date) => void;
   onDayClick: (date: Date) => void;
+  onDeleteEvent: (eventId: string, e: React.MouseEvent) => void;
 }
 
-const DroppableDay = ({ day, events, tasks, columns, isCurrentMonth, isToday, onDrop, onAddEvent, onDayClick }: DroppableDayProps) => {
+const DroppableDay = ({ day, events, tasks, columns, isCurrentMonth, isToday, onDrop, onAddEvent, onDayClick, onDeleteEvent }: DroppableDayProps) => {
   const [{ isOver }, drop] = useDrop(() => ({
     accept: 'TASK',
     drop: (item: { taskId: string }) => {
@@ -226,13 +227,21 @@ const DroppableDay = ({ day, events, tasks, columns, isCurrentMonth, isToday, on
         {events.map((event) => (
           <div
             key={event._id}
-            className="text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 md:py-1 rounded truncate text-gray-900 font-medium"
+            className="text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 md:py-1 rounded truncate text-gray-900 font-medium flex items-center justify-between group/event hover:pr-1"
             style={{ 
               backgroundColor: event.color ? `${event.color}20` : '#3b82f620',
               borderLeft: `3px solid ${event.color || '#3b82f6'}`
             }}
           >
-            {event.name || event.title}
+            <span className="truncate flex-1 min-w-0">{event.name || event.title}</span>
+            <button
+              type="button"
+              onClick={(e) => onDeleteEvent(event._id, e)}
+              className="opacity-0 group-hover/event:opacity-100 ml-1 shrink-0 hover:text-red-600 transition-opacity"
+              title="Delete event"
+            >
+              <Trash2 size={12} />
+            </button>
           </div>
         ))}
         {sortedTasks.map((task) => {
@@ -437,6 +446,22 @@ const CalendarViewContent = () => {
     loadData();
   };
 
+  const handleDeleteEvent = async (eventId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!confirm('Are you sure you want to delete this event?')) {
+      return;
+    }
+
+    try {
+      await eventService.deleteEvent(eventId);
+      loadData();
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      alert('Failed to delete event. Please try again.');
+    }
+  };
+
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
@@ -457,7 +482,7 @@ const CalendarViewContent = () => {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 flex-1 overflow-hidden">
-        {/* Calendar */}
+        {/* Calendar - Takes more space */}
         <div className="flex-1 bg-white rounded-lg p-3 md:p-6 shadow-sm flex flex-col overflow-hidden min-h-[500px] md:min-h-0">
           <div className="flex items-center justify-between mb-4 md:mb-6 flex-wrap gap-2">
             <button
@@ -517,6 +542,7 @@ const CalendarViewContent = () => {
                     onDrop={handleTaskDrop}
                     onAddEvent={handleAddEvent}
                     onDayClick={handleDayClick}
+                    onDeleteEvent={handleDeleteEvent}
                   />
                 );
               })}
@@ -524,32 +550,140 @@ const CalendarViewContent = () => {
           </div>
         </div>
 
-        {/* Unscheduled Tasks Sidebar */}
-        <div className="w-full lg:w-80 bg-white rounded-lg p-3 md:p-6 shadow-sm overflow-y-auto max-h-[300px] lg:max-h-full">
-          <div className="flex items-center justify-between mb-3 md:mb-4">
-            <h3 className="text-sm md:text-base font-semibold text-gray-900">
-              {showAllTasks ? 'All Tasks' : 'Unscheduled Tasks'}
-            </h3>
-            <button
-              type="button"
-              onClick={() => setShowAllTasks(!showAllTasks)}
-              className="text-xs md:text-sm text-blue-500 hover:text-blue-600 font-medium"
-            >
-              {showAllTasks ? 'Unscheduled' : 'All'}
-            </button>
+        {/* Right Sidebar - Events and Tasks */}
+        <div className="w-full lg:w-96 flex flex-col gap-4 max-h-[600px] lg:max-h-full overflow-hidden">
+          {/* All Events Section */}
+          <div className="bg-white rounded-lg p-3 md:p-4 shadow-sm flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between mb-3 shrink-0">
+              <div className="flex items-center gap-2">
+                <Calendar size={18} className="text-blue-500" />
+                <h3 className="text-sm md:text-base font-semibold text-gray-900">
+                  All Events
+                </h3>
+              </div>
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                {events.length}
+              </span>
+            </div>
+
+            <div className="overflow-y-auto flex-1 min-h-0">
+              {events.length === 0 ? (
+                <div className="text-center py-6">
+                  <Calendar size={40} className="mx-auto text-gray-300 mb-2" />
+                  <p className="text-gray-500 text-xs">No events yet</p>
+                  <p className="text-gray-400 text-xs mt-1">Click "Add Event" to create one</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {events
+                    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+                    .map((event) => {
+                      const eventDate = new Date(event.startTime);
+                      const getFrequencyDisplay = (freq?: string) => {
+                        if (!freq || freq === 'once') return 'One-time';
+                        if (freq === 'daily') return 'Daily';
+                        if (freq === 'weekly') return 'Weekly';
+                        if (freq === 'weekdays') return 'Weekdays';
+                        if (freq === 'custom') return 'Custom';
+                        return freq.charAt(0).toUpperCase() + freq.slice(1);
+                      };
+
+                      return (
+                        <div
+                          key={event._id}
+                          className="border rounded-lg p-2.5 hover:shadow-md transition-shadow group"
+                          style={{
+                            borderLeftWidth: '3px',
+                            borderLeftColor: event.color || '#3b82f6'
+                          }}
+                        >
+                          {/* Event Header */}
+                          <div className="flex items-start justify-between mb-1.5">
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-semibold text-gray-900 text-xs truncate">
+                                {event.name || event.title}
+                              </h4>
+                              <p className="text-[10px] text-gray-500 mt-0.5">
+                                {format(eventDate, 'MMM d, yyyy • h:mm a')}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => handleDeleteEvent(event._id, e)}
+                              className="opacity-0 group-hover:opacity-100 ml-2 p-1 hover:bg-red-50 rounded transition-all shrink-0"
+                              title="Delete event"
+                            >
+                              <Trash2 size={12} className="text-red-600" />
+                            </button>
+                          </div>
+
+                          {/* Event Description */}
+                          {event.description && (
+                            <p className="text-[10px] text-gray-600 mb-1.5 line-clamp-1">
+                              {event.description}
+                            </p>
+                          )}
+
+                          {/* Event Details */}
+                          <div className="flex flex-wrap gap-1.5">
+                            {/* Frequency Badge */}
+                            <div className="flex items-center gap-1 bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-[10px]">
+                              <Repeat size={10} />
+                              <span>{getFrequencyDisplay(event.frequency)}</span>
+                            </div>
+
+                            {/* Duration Badge */}
+                            {event.duration && (
+                              <div className="flex items-center gap-1 bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded text-[10px]">
+                                <Clock size={10} />
+                                <span>{event.duration}m</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* End Date for Recurring Events */}
+                          {event.frequency && event.frequency !== 'once' && event.endDate && (
+                            <p className="text-[10px] text-gray-500 mt-1">
+                              Until: {format(new Date(event.endDate), 'MMM d, yyyy')}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
           </div>
 
-          {getDisplayTasks().length === 0 ? (
-            <p className="text-gray-500 text-center py-6 md:py-8 text-sm">
-              {showAllTasks ? 'No tasks' : 'No unscheduled tasks'}
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {getDisplayTasks().map((task) => (
-                <DraggableTask key={task._id} task={task} />
-              ))}
+          {/* Unscheduled Tasks Section */}
+          <div className="bg-white rounded-lg p-3 md:p-4 shadow-sm flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between mb-3 shrink-0">
+              <h3 className="text-sm md:text-base font-semibold text-gray-900">
+                {showAllTasks ? 'All Tasks' : 'Unscheduled Tasks'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowAllTasks(!showAllTasks)}
+                className="text-xs text-blue-500 hover:text-blue-600 font-medium"
+              >
+                {showAllTasks ? 'Unscheduled' : 'All'}
+              </button>
             </div>
-          )}
+
+            <div className="overflow-y-auto flex-1 min-h-0">
+              {getDisplayTasks().length === 0 ? (
+                <p className="text-gray-500 text-center py-4 text-xs">
+                  {showAllTasks ? 'No tasks' : 'No unscheduled tasks'}
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {getDisplayTasks().map((task) => (
+                    <DraggableTask key={task._id} task={task} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -656,7 +790,7 @@ const CalendarViewContent = () => {
                   return (
                     <div
                       key={event._id}
-                      className="absolute px-3 rounded-lg text-sm font-medium text-gray-900 cursor-pointer flex items-center group"
+                      className="absolute px-3 rounded-lg text-sm font-medium text-gray-900 cursor-pointer flex items-center justify-between group"
                       style={{
                         top: `${topPosition}px`,
                         left: 'calc(80px + 1rem)',
@@ -667,8 +801,18 @@ const CalendarViewContent = () => {
                         zIndex: 10
                       }}
                     >
-                      <div className="font-semibold truncate text-xs w-full">{event.name || event.title}</div>
+                      <div className="font-semibold truncate text-xs flex-1 min-w-0">{event.name || event.title}</div>
                       
+                      {/* Delete Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteEvent(event._id, e)}
+                        className="opacity-0 group-hover:opacity-100 ml-2 p-1 hover:bg-red-100 rounded transition-all shrink-0"
+                        title="Delete event"
+                      >
+                        <Trash2 size={14} className="text-red-600" />
+                      </button>
+
                       {/* Hover Tooltip */}
                       <div className="absolute left-0 top-full mt-2 hidden group-hover:block bg-gray-900 text-white px-3 py-2 rounded-lg shadow-lg z-50 min-w-[250px] max-w-[400px]">
                         <div className="font-semibold text-sm mb-1">{event.name || event.title}</div>
