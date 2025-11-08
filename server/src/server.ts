@@ -32,6 +32,14 @@ connectDB();
 // Start reminder service
 startReminderService();
 
+// Test Routes
+app.get('/api/test', (req: Request, res: Response) => {
+  res.status(200).json({
+    success: true,
+    message: 'Test route is working'
+  });
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/columns', columnRoutes);
