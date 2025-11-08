@@ -17,8 +17,14 @@ import analyticsRoutes from './routes/analyticsRoutes';
 const app: Application = express();
 
 // Middleware
+const allowedOrigins: string[] = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  process.env.CLIENT_URL || ''
+].filter((origin) => origin !== ''); // Remove empty strings
+
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001'],
+  origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
