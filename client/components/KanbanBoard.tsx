@@ -100,7 +100,14 @@ const KanbanBoard = () => {
     console.log('Fetching subtasks for parentTaskId:', parentTaskId);
     
     return tasks
-      .filter((task) => task.parentTaskId?._id === parentTaskId)
+      .filter((task) => {
+        if (!task.parentTaskId) return false;
+        // Handle both string and Task object types
+        const taskParentId = typeof task.parentTaskId === 'string' 
+          ? task.parentTaskId 
+          : task.parentTaskId._id;
+        return taskParentId === parentTaskId;
+      })
       .sort((a, b) => a.position - b.position);
     };
 

@@ -91,8 +91,6 @@ const CreateTaskModal = ({
         isReminder: formData.isReminder,
         reminderDeadline: formData.isReminder && formData.reminderDeadline ? formData.reminderDeadline : undefined,
         isCompleted: false,
-        completions: [],
-        timeEntries: [],
       });
 
       onTaskCreated();

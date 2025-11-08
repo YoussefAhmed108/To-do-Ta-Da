@@ -51,8 +51,8 @@ export interface Task {
   startDate?: string;
   startTime?: string; // Time in HH:mm format (e.g., "14:30")
   frequency?: TaskFrequency;
-  customDays?: string[];
-  parentTaskId?: Task;
+  customDays?: string[] | DayOfWeek;
+  parentTaskId?: string | Task;
   estimatedTime?: number;
   timeTaken?: number;
   isCompleted?: boolean;

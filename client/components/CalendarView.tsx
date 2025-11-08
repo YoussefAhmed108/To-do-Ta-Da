@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import type { Event, Task, DayOfWeek, Column } from '@/types';
-import { TaskFrequency } from '@/types';
+import type { TaskFrequency } from '@/types';
 import { eventService } from '@/lib/eventService';
 import { taskService } from '@/lib/taskService';
 import { columnService } from '@/lib/columnService';
@@ -19,6 +19,7 @@ interface TimeInputModalProps {
 
 const TimeInputModal = ({ onClose, onConfirm }: TimeInputModalProps) => {
   const [time, setTime] = useState('');
+  const id = useId();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,11 +45,11 @@ const TimeInputModal = ({ onClose, onConfirm }: TimeInputModalProps) => {
         
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label htmlFor="time-input" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor={`${id}-time-input`} className="block text-sm font-medium text-gray-700 mb-2">
               Start Time (Optional)
             </label>
             <input
-              id="time-input"
+              id={`${id}-time-input`}
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
@@ -187,12 +188,20 @@ const DroppableDay = ({ day, events, tasks, columns, isCurrentMonth, isToday, on
   return (
     <div
       ref={drop as unknown as React.LegacyRef<HTMLDivElement>}
-      className={`h-full min-h-[80px] md:min-h-[100px] max-h-[140px] p-1.5 md:p-2 border border-gray-200 cursor-pointer overflow-hidden ${
+      className={`h-full min-h-20 md:min-h-[100px] max-h-[140px] p-1.5 md:p-2 border border-gray-200 cursor-pointer overflow-hidden ${
         !isCurrentMonth ? 'bg-gray-50' : 'bg-white'
       } ${isToday ? 'bg-blue-50 border-blue-300' : ''} ${
         isOver ? 'bg-green-50 border-green-300' : ''
       } hover:bg-gray-50 transition-colors`}
       onClick={() => onDayClick(day)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onDayClick(day);
+        }
+      }}
+      role="button"
+      tabIndex={0}
     >
       <div className="flex items-center justify-between mb-1">
         <span
@@ -559,10 +568,19 @@ const CalendarViewContent = () => {
         <div 
           className="fixed inset-0 bg-transparent backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={() => setSelectedDayView(null)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setSelectedDayView(null);
+          }}
+          role="button"
+          tabIndex={-1}
+          aria-label="Close day view"
         >
           <div 
             className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-xl"
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
           >
             {/* Header */}
             <div className="bg-gray-50 px-4 md:px-6 py-4 border-b border-gray-200 flex items-center justify-between">
@@ -573,7 +591,7 @@ const CalendarViewContent = () => {
                     e.stopPropagation();
                     setSelectedDayView(subDays(selectedDayView, 1));
                   }}
-                  className="p-2 hover:bg-gray-200 rounded-lg transition-colors flex-shrink-0"
+                  className="p-2 hover:bg-gray-200 rounded-lg transition-colors shrink-0"
                   title="Previous day"
                 >
                   <ChevronLeft size={20} className="text-gray-700" />
@@ -592,7 +610,7 @@ const CalendarViewContent = () => {
                     e.stopPropagation();
                     setSelectedDayView(addDays(selectedDayView, 1));
                   }}
-                  className="p-2 hover:bg-gray-200 rounded-lg transition-colors flex-shrink-0"
+                  className="p-2 hover:bg-gray-200 rounded-lg transition-colors shrink-0"
                   title="Next day"
                 >
                   <ChevronRight size={20} className="text-gray-700" />
@@ -601,7 +619,7 @@ const CalendarViewContent = () => {
               <button
                 type="button"
                 onClick={() => setSelectedDayView(null)}
-                className="text-gray-400 hover:text-gray-600 flex-shrink-0 ml-2"
+                className="text-gray-400 hover:text-gray-600 shrink-0 ml-2"
               >
                 <X size={24} />
               </button>
